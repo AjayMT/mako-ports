@@ -20,9 +20,9 @@ SYSCFLAGS=
 SYSLDFLAGS=
 SYSLIBS=
 
-MYCFLAGS=-Wno-builtin-declaration-mismatch -I${BUILD_ROOT}/sysroot/usr/include
+MYCFLAGS=-Wno-builtin-declaration-mismatch -I${BUILD_ROOT}/src/libc/
 MYLDFLAGS=-nostdlib
-MYLIBS=${BUILD_ROOT}/sysroot/usr/lib/crt0.o ${BUILD_ROOT}/sysroot/usr/lib/crti.o ${BUILD_ROOT}/sysroot/usr/lib/crtn.o ${BUILD_ROOT}/sysroot/usr/lib/libc.a -lgcc
+MYLIBS=${BUILD_ROOT}/crt0.o ${BUILD_ROOT}/crti.o ${BUILD_ROOT}/crtn.o ${BUILD_ROOT}/libc.a -lgcc
 MYOBJS=
 
 # == END OF USER SETTINGS -- NO NEED TO CHANGE ANYTHING BELOW THIS LINE =======

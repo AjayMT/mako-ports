@@ -1,8 +1,6 @@
-CC=i386-elf-gcc
-LIBS=${BUILD_ROOT}/sysroot/usr/lib/crt0.o ${BUILD_ROOT}/sysroot/usr/lib/crti.o ${BUILD_ROOT}/sysroot/usr/lib/crtn.o ${BUILD_ROOT}/sysroot/usr/lib/libc.a -lgcc
 
 nanoc: nanoc.c
-	$(CC) -Wno-builtin-declaration-mismatch -nostdlib nanoc.c $(LIBS) -o nanoc -I${BUILD_ROOT}/sysroot/usr/include
+	$(CC) -o nanoc nanoc.c
 
 archive.a: test/archive.c
 	i386-elf-gcc -c test/archive.c -o archive.o
