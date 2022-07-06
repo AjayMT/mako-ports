@@ -7,7 +7,6 @@
 #include <mako.h>
 #include <stdint.h>
 #include <string.h>
-#include <math.h>
 
 static uint32_t start_time = 0;
 static uint8_t window_init = 0;
@@ -24,13 +23,16 @@ static unsigned int s_KeyQueueReadIndex = 0;
 static unsigned char convert_to_doom_key(uint8_t key)
 {
   switch (key) {
-  case KB_SC_ESC:   return KEY_ESCAPE;
-  case KB_SC_ENTER: return KEY_ENTER;
-
-  case KB_SC_UP:    return KEY_UPARROW;
-  case KB_SC_DOWN:  return KEY_DOWNARROW;
-  case KB_SC_LEFT:  return KEY_LEFTARROW;
-  case KB_SC_RIGHT: return KEY_RIGHTARROW;
+  case KB_SC_ESC:    return KEY_ESCAPE;
+  case KB_SC_ENTER:  return KEY_ENTER;
+  case KB_SC_A:      return KEY_FIRE;
+  case KB_SC_SPACE:  return KEY_USE;
+  case KB_SC_RSHIFT: return KEY_RSHIFT;
+  case KB_SC_UP:     return KEY_UPARROW;
+  case KB_SC_DOWN:   return KEY_DOWNARROW;
+  case KB_SC_LEFT:   return KEY_LEFTARROW;
+  case KB_SC_RIGHT:  return KEY_RIGHTARROW;
+  case KB_SC_Y:      return 'y';
   }
   return key;
 }
@@ -94,6 +96,7 @@ static void ui_handler(ui_event_t ev)
 
 void DG_Init()
 {
+  priority(1);
   ui_init();
   ui_set_handler(ui_handler);
   ui_acquire_window();
