@@ -71,40 +71,37 @@ static void keyboard_handler(uint8_t code)
   }
 }
 
-static void ui_handler(ui_event_t ev)
-{
-  if (ev.type == UI_EVENT_KEYBOARD) {
-    keyboard_handler(ev.code);
-    return;
-  }
-
-  if (ev.width == window_w && ev.height == window_h) return;
-
-  if (ui_buf) {
-    uint32_t oldsize = window_w * window_h * 4;
-    pagefree((uint32_t)ui_buf, (oldsize / 0x1000) + 1);
-  } else {
-    window_init = 1;
-    start_time = systime();
-  }
-
-  window_w = ev.width; window_h = ev.height;
-  uint32_t size = ev.width * ev.height * 4;
-  ui_buf = (uint32_t *)pagealloc((size / 0x1000) + 1);
-  memset(ui_buf, 0, size);
-}
-
 void DG_Init()
 {
-  priority(1);
-  ui_init();
-  ui_set_handler(ui_handler);
-  ui_acquire_window();
+  priority(2);
+
+  int32_t res = ui_acquire_window();
+  if (res < 0) return;
+  ui_buf = (uint32_t *)res;
+
+  // wait until window creation event
+  ui_event_t ev;
+  while (1) {
+    ui_next_event(&ev);
+    if (ev.type == UI_EVENT_WAKE) break;
+  }
+
+  start_time = systime();
+  window_init = 1;
+  window_w = ev.width; window_h = ev.height;
+  uint32_t size = ev.width * ev.height * 4;
+  memset(ui_buf, 0, size);
 }
 
 void DG_DrawFrame()
 {
   if (window_init == 0) return;
+
+  // check for keyboard events
+  while (ui_poll_events()) {
+    ui_event_t ev; ui_next_event(&ev);
+    if (ev.type == UI_EVENT_KEYBOARD) keyboard_handler(ev.code);
+  }
 
   double min_ratio = (double)window_h / (double)DOOMGENERIC_RESY;
   if ((double)window_w / (double)DOOMGENERIC_RESX < min_ratio)
@@ -119,7 +116,7 @@ void DG_DrawFrame()
     }
   }
 
-  ui_swap_buffers((uint32_t)ui_buf);
+  ui_swap_buffers();
 }
 
 int DG_GetKey(int *pressed, unsigned char *key)
