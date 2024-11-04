@@ -63,6 +63,7 @@ static void keyboard_handler(uint8_t code)
   case KB_SC_TAB:
     if (meta) {
       meta = 0;
+      priority(1);
       ui_yield();
       return;
     }
@@ -100,6 +101,7 @@ void DG_DrawFrame()
   // check for keyboard events
   while (ui_poll_events()) {
     ui_event_t ev; ui_next_event(&ev);
+    if (ev.type == UI_EVENT_WAKE) priority(2);
     if (ev.type == UI_EVENT_KEYBOARD) keyboard_handler(ev.code);
   }
 
