@@ -14,62 +14,68 @@ static uint32_t window_w = 0;
 static uint32_t window_h = 0;
 static uint32_t *ui_buf = 0;
 
-#define KEYQUEUE_SIZE 512
+#define KEYQUEUE_SIZE 16
 
-static unsigned short s_KeyQueue[KEYQUEUE_SIZE];
-static unsigned int s_KeyQueueWriteIndex = 0;
-static unsigned int s_KeyQueueReadIndex = 0;
+struct keyqueue_entry {
+  uint8_t key;
+  uint8_t pressed;
+};
 
-static unsigned char convert_to_doom_key(uint8_t key)
-{
+static unsigned keyqueue_read_idx = 0;
+static unsigned keyqueue_write_idx = 0;
+static struct keyqueue_entry keyqueue[KEYQUEUE_SIZE];
+
+static uint8_t convert_to_doom_key(uint8_t key, uint8_t *out) {
   switch (key) {
-  case KB_SC_ESC:    return KEY_ESCAPE;
-  case KB_SC_ENTER:  return KEY_ENTER;
-  case KB_SC_A:      return KEY_FIRE;
-  case KB_SC_SPACE:  return KEY_USE;
-  case KB_SC_RSHIFT: return KEY_RSHIFT;
-  case KB_SC_UP:     return KEY_UPARROW;
-  case KB_SC_DOWN:   return KEY_DOWNARROW;
-  case KB_SC_LEFT:   return KEY_LEFTARROW;
-  case KB_SC_RIGHT:  return KEY_RIGHTARROW;
-  case KB_SC_Y:      return 'y';
+  case KB_SC_ESC:
+    *out = KEY_ESCAPE;
+    return 1;
+  case KB_SC_ENTER:
+    *out = KEY_ENTER;
+    return 1;
+  case KB_SC_A:
+    *out = KEY_FIRE;
+    return 1;
+  case KB_SC_SPACE:
+    *out = KEY_USE;
+    return 1;
+  case KB_SC_RSHIFT:
+    *out = KEY_RSHIFT;
+    return 1;
+  case KB_SC_UP:
+    *out = KEY_UPARROW;
+    return 1;
+  case KB_SC_DOWN:
+    *out = KEY_DOWNARROW;
+    return 1;
+  case KB_SC_LEFT:
+    *out = KEY_LEFTARROW;
+    return 1;
+  case KB_SC_RIGHT:
+    *out = KEY_RIGHTARROW;
+    return 1;
+  case KB_SC_Y:
+    *out = 'y';
+    return 1;
+  default:
+    return 0;
   }
-  return key;
 }
 
-static void add_key_to_queue(int pressed, unsigned int code) {
-  unsigned char key = convert_to_doom_key(code);
-  unsigned short data = (pressed << 8) | key;
-  s_KeyQueue[s_KeyQueueWriteIndex] = data;
-  s_KeyQueueWriteIndex++;
-  s_KeyQueueWriteIndex %= KEYQUEUE_SIZE;
+static void buffer_key(uint8_t pressed, uint8_t code) {
+  uint8_t doom_key = 0;
+  if (!convert_to_doom_key(code, &doom_key)) return;
+  keyqueue[keyqueue_write_idx].key = doom_key;
+  keyqueue[keyqueue_write_idx].pressed = pressed;
+  keyqueue_write_idx = (keyqueue_write_idx + 1) % KEYQUEUE_SIZE;
 }
 
 static void keyboard_handler(uint8_t code)
 {
-  static uint8_t meta = 0;
-
   if (code & 0x80) {
     code &= 0x7F;
-    if (code == KB_SC_META) {
-      meta = 0; return;
-    }
-    add_key_to_queue(0, code);
-    return;
-  }
-
-  switch (code) {
-  case KB_SC_META: meta = 1; return;
-  case KB_SC_TAB:
-    if (meta) {
-      meta = 0;
-      priority(1);
-      ui_yield();
-      return;
-    }
-  default:
-    add_key_to_queue(1, code);
-  }
+    buffer_key(0, code);
+  } else buffer_key(1, code);
 }
 
 void DG_Init()
@@ -82,10 +88,9 @@ void DG_Init()
 
   // wait until window creation event
   ui_event_t ev;
-  while (1) {
-    ui_next_event(&ev);
-    if (ev.type == UI_EVENT_WAKE) break;
-  }
+  res = ui_next_event(&ev);
+  if (res < 0 || ev.type != UI_EVENT_WAKE)
+    return;
 
   start_time = systime();
   window_init = 1;
@@ -96,12 +101,14 @@ void DG_Init()
 
 void DG_DrawFrame()
 {
-  if (window_init == 0) return;
+  if (!window_init) return;
 
-  // check for keyboard events
   while (ui_poll_events()) {
     ui_event_t ev; ui_next_event(&ev);
-    if (ev.type == UI_EVENT_WAKE) priority(2);
+    if (ev.type == UI_EVENT_WAKE)
+      priority(2);
+    if (ev.type == UI_EVENT_SLEEP)
+      priority(1);
     if (ev.type == UI_EVENT_KEYBOARD) keyboard_handler(ev.code);
   }
 
@@ -123,16 +130,12 @@ void DG_DrawFrame()
 
 int DG_GetKey(int *pressed, unsigned char *key)
 {
-  if (s_KeyQueueReadIndex == s_KeyQueueWriteIndex)
-    return 0;
-  else {
-    unsigned short data = s_KeyQueue[s_KeyQueueReadIndex];
-    s_KeyQueueReadIndex++;
-    s_KeyQueueReadIndex %= KEYQUEUE_SIZE;
-    *pressed = data >> 8;
-    *key = data & 0xFF;
-    return 1;
-  }
+  if (keyqueue_read_idx == keyqueue_write_idx) return 0;
+
+  *pressed = keyqueue[keyqueue_read_idx].pressed;
+  *key = keyqueue[keyqueue_read_idx].key;
+  keyqueue_read_idx = (keyqueue_read_idx + 1) % KEYQUEUE_SIZE;
+  return 1;
 }
 
 void DG_SleepMs(uint32_t ms)
