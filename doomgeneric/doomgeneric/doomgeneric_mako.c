@@ -125,7 +125,7 @@ void DG_DrawFrame()
     }
   }
 
-  ui_swap_buffers();
+  ui_redraw_rect(0, 0, window_w, window_h);
 }
 
 int DG_GetKey(int *pressed, unsigned char *key)
