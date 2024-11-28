@@ -82,7 +82,7 @@ void DG_Init()
 {
   priority(2);
 
-  int32_t res = ui_acquire_window();
+  int32_t res = ui_acquire_window("DOOM");
   if (res < 0) return;
   ui_buf = (uint32_t *)res;
 
