@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <ui.h>
 
@@ -90,10 +91,12 @@ void DG_Init()
 {
   priority(2);
 
-  int32_t res = ui_acquire_window("DOOM", DOOMGENERIC_RESX, DOOMGENERIC_RESY);
+  ui_buf = malloc(DOOMGENERIC_RESX * DOOMGENERIC_RESY * sizeof(uint32_t));
+  if (ui_buf == NULL)
+    return;
+  int32_t res = ui_acquire_window(ui_buf, "DOOM", DOOMGENERIC_RESX, DOOMGENERIC_RESY);
   if (res < 0)
     return;
-  ui_buf = (uint32_t *)res;
 
   // wait until window creation event
   ui_event_t ev;
