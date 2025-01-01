@@ -323,6 +323,14 @@ void I_GetEvent(void)
         }
     }
 
+    int dx, dy;
+    while (DG_GetMouse(&dx, &dy)) {
+        event.type = ev_mouse;
+        event.data1 = 0;
+        event.data2 = dx;
+        event.data3 = dy;
+        D_PostEvent(&event);
+    }
 
                 /*
             case SDL_MOUSEMOTION:

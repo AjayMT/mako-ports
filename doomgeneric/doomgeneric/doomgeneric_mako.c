@@ -14,7 +14,7 @@ static uint32_t start_time = 0;
 static bool window_init = false;
 static uint32_t *ui_buf = 0;
 
-#define KEYQUEUE_SIZE 16
+#define QUEUE_SIZE 128
 
 struct keyqueue_entry
 {
@@ -24,7 +24,17 @@ struct keyqueue_entry
 
 static unsigned keyqueue_read_idx = 0;
 static unsigned keyqueue_write_idx = 0;
-static struct keyqueue_entry keyqueue[KEYQUEUE_SIZE];
+static struct keyqueue_entry keyqueue[QUEUE_SIZE];
+
+struct mousequeue_entry
+{
+  int dx;
+  int dy;
+};
+
+static unsigned mousequeue_read_idx = 0;
+static unsigned mousequeue_write_idx = 0;
+static struct mousequeue_entry mousequeue[QUEUE_SIZE];
 
 static uint8_t convert_to_doom_key(uint8_t key, uint8_t *out)
 {
@@ -75,7 +85,14 @@ static void buffer_key(bool pressed, uint8_t code)
     return;
   keyqueue[keyqueue_write_idx].key = doom_key;
   keyqueue[keyqueue_write_idx].pressed = pressed;
-  keyqueue_write_idx = (keyqueue_write_idx + 1) % KEYQUEUE_SIZE;
+  keyqueue_write_idx = (keyqueue_write_idx + 1) % QUEUE_SIZE;
+}
+
+static void buffer_mouse(int dx, int dy)
+{
+  mousequeue[mousequeue_write_idx].dx = dx;
+  mousequeue[mousequeue_write_idx].dy = dy;
+  mousequeue_write_idx = (mousequeue_write_idx + 1) % QUEUE_SIZE;
 }
 
 static void keyboard_handler(uint8_t code)
@@ -104,6 +121,8 @@ void DG_Init()
   if (res < 0 || ev.type != UI_EVENT_WAKE)
     return;
 
+  ui_enable_mouse_move_events();
+
   start_time = systime();
   window_init = true;
   uint32_t size = ev.width * ev.height * 4;
@@ -118,12 +137,27 @@ void DG_DrawFrame()
   while (ui_poll_events()) {
     ui_event_t ev;
     ui_next_event(&ev);
-    if (ev.type == UI_EVENT_WAKE)
-      priority(2);
-    if (ev.type == UI_EVENT_SLEEP)
-      priority(1);
-    if (ev.type == UI_EVENT_KEYBOARD)
-      keyboard_handler(ev.code);
+    switch (ev.type) {
+      case UI_EVENT_WAKE:
+        priority(2);
+        break;
+      case UI_EVENT_SLEEP:
+        priority(1);
+        break;
+      case UI_EVENT_KEYBOARD:
+        keyboard_handler(ev.code);
+        break;
+      case UI_EVENT_MOUSE_CLICK:
+        buffer_key(true, KB_SC_QUOTE);
+        break;
+      case UI_EVENT_MOUSE_UNCLICK:
+        buffer_key(false, KB_SC_QUOTE);
+        break;
+      case UI_EVENT_MOUSE_MOVE:
+        buffer_mouse(ev.dx, ev.dy);
+        break;
+      default:;
+    }
   }
 
   for (unsigned y = 0; y < DOOMGENERIC_RESY; ++y) {
@@ -141,7 +175,18 @@ int DG_GetKey(int *pressed, unsigned char *key)
 
   *pressed = keyqueue[keyqueue_read_idx].pressed;
   *key = keyqueue[keyqueue_read_idx].key;
-  keyqueue_read_idx = (keyqueue_read_idx + 1) % KEYQUEUE_SIZE;
+  keyqueue_read_idx = (keyqueue_read_idx + 1) % QUEUE_SIZE;
+  return 1;
+}
+
+int DG_GetMouse(int *dx, int *dy)
+{
+  if (mousequeue_read_idx == mousequeue_write_idx)
+    return 0;
+
+  *dx = mousequeue[mousequeue_read_idx].dx * 30;
+  *dy = mousequeue[mousequeue_read_idx].dy * 30;
+  mousequeue_read_idx = (mousequeue_read_idx + 1) % QUEUE_SIZE;
   return 1;
 }
 
