@@ -127,6 +127,7 @@ void DG_Init()
   window_init = true;
   uint32_t size = ev.width * ev.height * 4;
   memset(ui_buf, 0, size);
+  ui_redraw_rect(0, 0, DOOMGENERIC_RESX, DOOMGENERIC_RESY);
 }
 
 void DG_DrawFrame()
